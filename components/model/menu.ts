@@ -1,0 +1,1 @@
+export type IdType = 'config' | 'prep' | 'sign' | 'protect' | 'pack' | 'verify';
