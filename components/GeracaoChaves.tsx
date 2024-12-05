@@ -166,12 +166,26 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                                         textColor="#05668d"
                                     />
                                     <Button
-                                        style={{backgroundColor: "#F5CF3D"}}
-                                        onClick={() => downloadFile("publicKey.pem", rsaKeys.publicKey)}>
+                                        style={{
+                                            backgroundColor: "#F5CF3D",
+                                            textAlign: 'center',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
+                                        onClick={() => downloadFile("publicKey.pem", rsaKeys.publicKey)}
+                                    >
                                         Baixar Chave Pública
                                     </Button>
+
                                     <Button
-                                        style={{backgroundColor: "#F5CF3D"}}
+                                        style={{
+                                            backgroundColor: "#F5CF3D",
+                                            textAlign: 'center',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center'
+                                        }}
                                         onClick={() => downloadFile("privateKey.pem", rsaKeys.privateKey)}>
                                         Baixar Chave Privada
                                     </Button>
@@ -188,7 +202,13 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                             )}
                             {showAESKey && (
                                 <Button
-                                    style={{backgroundColor: "#F5CF3D"}}
+                                    style={{
+                                        backgroundColor: "#F5CF3D",
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center'
+                                    }}
                                     onClick={() => downloadFile("aesKey.txt", aesKey)}>
                                     Baixar Chave AES
                                 </Button>
