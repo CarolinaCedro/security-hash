@@ -1,10 +1,10 @@
 'use client';
 import {useState} from 'react';
-import {ProcessStep} from "@/components/ProcessStep";
+import {Menu} from "@/components/Menu";
 import {menu} from "@/components/utils/navigation/menu";
-import {Button} from "@/components/utils/button";
 import {IdType} from "@/components/model/menu";
 import {DocumentCheckIcon, LockClosedIcon, ShieldCheckIcon} from "@heroicons/react/24/outline";
+import {Button} from "@/components/utils/components/button";
 
 export default function Home() {
     const [currentStepId, setCurrentStepId] = useState<IdType>('config');
@@ -80,7 +80,7 @@ export default function Home() {
                     <nav className="w-full lg:w-64 bg-blue-50 border-r border-gray-200 p-4">
                         <ul className="space-y-4 ">
                             {menu.map((step) => (
-                                <ProcessStep
+                                <Menu
                                     key={step.id}
                                     title={step.title}
                                     icon={step.icon}

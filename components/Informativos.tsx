@@ -6,7 +6,7 @@ interface KeyDisplayProps {
     content: string;
 }
 
-export function KeyDisplay({title, content}: KeyDisplayProps) {
+export function Informativos({title, content}: KeyDisplayProps) {
     const [showInfo, setShowInfo] = useState(false);
 
     const getExplanation = (title: string) => {

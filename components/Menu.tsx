@@ -1,6 +1,7 @@
-import {Button} from "@/components/utils/button";
+
 import {RefreshCw} from "lucide-react";
 import {motion} from "framer-motion";
+import {Button} from "@/components/utils/components/button";
 
 interface ProcessStepProps {
     title: string;
@@ -9,7 +10,7 @@ interface ProcessStepProps {
     onReset?: () => void;
 }
 
-export function ProcessStep({title, icon, status, onReset}: ProcessStepProps) {
+export function Menu({title, icon, status, onReset}: ProcessStepProps) {
     const statusStyles = {
         completed: 'text-green-600',
         current: '',
@@ -39,6 +40,8 @@ export function ProcessStep({title, icon, status, onReset}: ProcessStepProps) {
                         <RefreshCw className="w-4 h-4 mr-2"/>
                         Repetir
                     </Button>
+
+
                 </motion.div>
             )}
         </li>

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { KeyIcon, LockClosedIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
-export function VerifyStep() {
+export function Descriptografia() {
     const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
     const [currentStep, setCurrentStep] = useState(0); // Etapas: 0 = início, 1 = AES, 2 = Descriptografia, 3 = Verificação
     const [privateKey, setPrivateKey] = useState("");

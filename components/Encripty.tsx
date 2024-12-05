@@ -64,32 +64,9 @@ const ANIMATION_VARIANTS = {
   },
 };
 
-const PackageSteps = ({ completedSteps }) => (
-    <ul className="space-y-3 flex-1">
-      {PACKAGE_STEPS.map((step, index) => (
-          <motion.li
-              key={index}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100"
-          >
-            <div className="flex items-center">
-              <step.icon className="w-5 h-5 mr-3 text-indigo-500" />
-              <span>{step.text}</span>
-            </div>
 
-            <motion.div
-                variants={ANIMATION_VARIANTS.checkmark}
-                initial="initial"
-                animate={completedSteps > index ? "animate" : "initial"}
-                className="ml-2"
-            >
-              <CheckCircleIcon className="w-6 h-6 text-green-500" />
-            </motion.div>
-          </motion.li>
-      ))}
-    </ul>
-);
 
-export function SendStep({ stepState, setStepState, setIsStepComplete }) {
+export function Encripty({ stepState, setStepState, setIsStepComplete }) {
   const {
     enviado,
     mensagemSucesso,
