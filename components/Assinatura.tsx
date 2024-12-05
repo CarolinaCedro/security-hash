@@ -1,16 +1,13 @@
 import {motion} from 'framer-motion';
 import {useState} from 'react';
-import {FaFile, FaLock, FaSignature, FaCheckCircle} from 'react-icons/fa';
+import {FaFile, FaLock, FaSignature, FaCheckCircle, FaKey, FaFileSignature} from 'react-icons/fa';
+import {Button} from "@/components/utils/components/button";
 
 export function Assinatura({stepState, setStepState, setIsStepComplete}) {
     const {isSigningAnimating, isEncryptingAnimating, isSigned, isEncrypted} = stepState;
     const [isSuccess, setIsSuccess] = useState(false);
 
-    const publicKeyData = {
-        kty: "RSA",
-        n: "sXchfDjqQWcmrXmI7K-Uk3Zn_OpIh9rj7jvThVgU8JxECcfT6fj6Ltnon9pyZjFXZGE5LQwVV3O_yOkkz9wnxfQjjklwqqdDsptD7b5ya4kHs3EqtJ_7dO6QihAlCROBBvbjpXYD0u3wQeaw3SZMjt21YtnwM9wkhPzYlgwnxR85L6O29Kjjq-cRbiwFlw4JlrxJwb2WxRU3tFgdjdFfnSQgsRj4wHDA1H48OT_JjGnWsqw8nvUy4hP5byZJfT7ROg8JdEC41uoF2EABrqgxuJyg8gGbJt1hPo6hvqjGgMCg4n9AqRmyFcWtvUQ",
-        e: "AQAB"
-    };
+
 
 
     const symmetricKeyData = 'd1210700aab38102789b9c455e915a5c7912bf551e92908a492a73133c6310e5';
@@ -91,6 +88,7 @@ export function Assinatura({stepState, setStepState, setIsStepComplete}) {
             className="flex flex-col items-center bg-gradient-to-b from-gray-50 to-gray-100 p-10 rounded-lg shadow-lg space-y-8">
             <h2 className="text-2xl font-bold text-gray-800">Processo de Assinatura e Cifragem</h2>
 
+            {/* Barra de progresso e animação */}
             <div className="relative flex items-center w-full max-w-md">
                 <div className="absolute w-full h-1 bg-gradient-to-r from-gray-300 via-gray-500 to-gray-300 flex">
                     <motion.div
@@ -123,8 +121,72 @@ export function Assinatura({stepState, setStepState, setIsStepComplete}) {
                 </motion.div>
             </div>
 
-            <button onClick={startProcess} className="btn btn-primary">Iniciar Processo</button>
-            <p>{getStatusText()}</p>
+            {/* Instruções explicativas sobre o processo */}
+            <div className="space-y-6 w-full max-w-md">
+                <div className="flex items-start space-x-4">
+                    <div className="w-1/3 h-10 bg-blue-200 rounded-full flex items-center justify-center">
+                        <FaFileSignature className="text-blue-500"/>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Assinatura Digital</h3>
+                        <p className="text-sm text-gray-600">
+                            A assinatura digital garante a autenticidade e a integridade do arquivo. Ela utiliza um par
+                            de chaves criptográficas (privada e pública) para garantir que o arquivo não foi alterado e
+                            que a identidade do remetente é verificada.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-start space-x-4">
+                    <div className="w-1/3 h-10 bg-yellow-200 rounded-full flex items-center justify-center">
+                        <FaLock className="text-yellow-500"/>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Cifragem do Arquivo</h3>
+                        <p className="text-sm text-gray-600">
+                            A cifragem protege o conteúdo do arquivo contra acesso não autorizado. Com a cifragem,
+                            apenas a pessoa que possui a chave de descriptografia poderá acessar o conteúdo do arquivo,
+                            garantindo a privacidade das informações.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-start space-x-4">
+                    <div className="w-1/3 h-10 bg-green-200 rounded-full flex items-center justify-center">
+                        <FaKey className="text-green-500"/>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Proteção de Acesso</h3>
+                        <p className="text-sm text-gray-600">
+                            O processo de cifragem utiliza chaves simétricas e assimétricas para garantir que o arquivo
+                            seja acessado apenas por destinatários autorizados. A chave simétrica, por exemplo, é usada
+                            para cifrar e decifrar os dados, tornando o processo seguro e eficiente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Botão para iniciar o processo */}
+            <Button
+                style={{backgroundColor: "#F5CF3D"}}
+                onClick={startProcess} className="btn btn-primary">
+                Iniciar Processo
+            </Button>
+
+            {/* Status do processo */}
+            <p className={`text-center text-lg font-semibold p-4 rounded-md ${
+                isSigningAnimating || isEncryptingAnimating
+                    ? 'bg-blue-100 text-blue-800'
+                    : isSigned
+                        ? 'bg-green-100 text-green-800'
+                        : isEncrypted
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+            } transition-all duration-300 ease-in-out`}>
+                {getStatusText()}
+            </p>
+
         </div>
+
     );
 }

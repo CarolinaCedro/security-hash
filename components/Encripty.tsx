@@ -64,8 +64,6 @@ const ANIMATION_VARIANTS = {
   },
 };
 
-
-
 export function Encripty({ stepState, setStepState, setIsStepComplete }) {
   const {
     enviado,
@@ -128,13 +126,27 @@ export function Encripty({ stepState, setStepState, setIsStepComplete }) {
           <h2 className="text-2xl font-bold">Envio de Arquivo Seguro</h2>
         </div>
 
-
-
         <div className="bg-white p-4 rounded-lg shadow-md w-full mb-6">
           <h3 className="font-semibold mb-3">Processo de Envio</h3>
-          {/*<div className="flex gap-12 mb-4">*/}
-            {/*  <PackageSteps completedSteps={completedSteps} />*/}
-            {/*</div>*/}
+
+          <div className="text-sm text-gray-600 mb-6">
+            <p>
+              Na etapa de <strong>empacotamento e envio</strong>, todos os elementos processados são combinados em um único pacote seguro para envio. O pacote contém:
+            </p>
+            <ul className="list-disc ml-6">
+              <li><strong className="text-blue-400">Arquivo cifrado com chave simétrica</strong>: Garante a segurança do conteúdo.</li>
+              <li><strong className="text-yellow-400">Assinatura digital do arquivo original</strong>: Confirma a autenticidade do arquivo.</li>
+              <li><strong className="text-purple-400">Chave simétrica cifrada com RSA</strong>: Protege o acesso à chave usada para encriptar o arquivo.</li>
+            </ul>
+            <p className="mt-4">
+              Ao ser enviado o pacote, garantimos:
+            </p>
+            <ul className="list-disc ml-6">
+              <li><strong className="text-green-400">Confidencialidade</strong>: O conteúdo do arquivo e a chave são protegidos contra interceptação.</li>
+              <li><strong className="text-green-400" >Integridade</strong>: O arquivo não será alterado durante o transporte.</li>
+              <li><strong className="text-green-400">Autenticidade</strong>: O remetente é validado através da assinatura digital.</li>
+            </ul>
+          </div>
 
           <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-4 mb-8">
             <motion.div
@@ -190,22 +202,17 @@ export function Encripty({ stepState, setStepState, setIsStepComplete }) {
             </div>
             <span className="text-sm text-gray-600 mt-1">Destino</span>
           </div>
-
-
-
-
-
         </div>
 
-          {mensagemSucesso && (
-              <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-green-600 font-medium text-lg text-center mb-4"
-              >
-                  {mensagemSucesso}
-              </motion.div>
-          )}
+        {mensagemSucesso && (
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-green-600 font-medium text-lg text-center mb-4"
+            >
+              {mensagemSucesso}
+            </motion.div>
+        )}
       </div>
   );
 }

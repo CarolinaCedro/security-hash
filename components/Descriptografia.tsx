@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { KeyIcon, LockClosedIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
+import {InformationCircleIcon} from "@heroicons/react/16/solid";
 
 export function Descriptografia() {
     const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
@@ -38,11 +39,26 @@ export function Descriptografia() {
     return (
         <div className="p-6 space-y-6 max-w-2xl mx-auto bg-gray-50 rounded-lg shadow-md">
             {/* Título e descrição */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-4">
+            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="text-center space-y-4">
                 <h2 className="text-2xl font-bold text-blue-600">Processo de Descriptografia</h2>
                 <p className="text-gray-600">
                     Complete o processo para descriptografar o arquivo e verificar a assinatura.
                 </p>
+                {/* Explicação da importância */}
+                <div className="space-y-4 bg-yellow-50 p-4 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                        <InformationCircleIcon className="w-8 h-8 text-yellow-600"/>
+                        <h3 className="text-xl font-semibold text-gray-800">Por que é importante?</h3>
+                    </div>
+                    <p className="text-gray-600 text-sm">
+                        Este processo garante que o arquivo recebido foi corretamente enviado e que o conteúdo não foi
+                        alterado. A utilização da chave privada RSA
+                        do professor para recuperar a chave simétrica AES e a verificação da assinatura digital são
+                        fundamentais para a segurança e
+                        autenticidade da informação.
+                    </p>
+                </div>
+
             </motion.div>
 
             {/* Campo de entrada */}
@@ -59,8 +75,8 @@ export function Descriptografia() {
 
             {/* Feedback visual com animação */}
             <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{opacity: 0}}
+                animate={{opacity: 1}}
                 className={`p-6 border rounded-lg shadow-lg transition-all text-center ${
                     status === "processing" ? "bg-yellow-50" : status === "success" ? "bg-green-50" : "bg-white"
                 }`}

@@ -1,36 +1,26 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle, Shield } from "lucide-react";
+import { CheckCircle, Shield, Lock, FileText } from "lucide-react";
 import { Button } from "@/components/utils/components/button";
 
 export function Protecao({ stepState, setStepState, setIsStepComplete }) {
-    const {
-        isEncrypting,
-        isEncrypted,
-        encryptionSteps,
-        currentStep,
-        recipientName = "Professor João",
-        originalKeySize = 32, // Tamanho da chave AES (256 bits = 32 bytes)
-    } = stepState;
+    const { isEncrypting, isEncrypted, encryptionSteps } = stepState;
 
     // Função para converter Hex em Uint8Array
-    function hexToUint8Array(hex: string): Uint8Array {
-        const bytes: number[] = [];
+    function hexToUint8Array(hex) {
+        const bytes = [];
         for (let i = 0; i < hex.length; i += 2) {
             bytes.push(parseInt(hex.substr(i, 2), 16));
         }
         return new Uint8Array(bytes);
     }
 
-    // Defina a chave pública diretamente no código
-    const publicKeyData = {
-        kty: "RSA",
-        n: "sXchfDjqQWcmrXmI7K-Uk3Zn_OpIh9rj7jvThVgU8JxECcfT6fj6Ltnon9pyZjFXZGE5LQwVV3O_yOkkz9wnxfQjjklwqqdDsptD7b5ya4kHs3EqtJ_7dO6QihAlCROBBvbjpXYD0u3wQeaw3SZMjt21YtnwM9wkhPzYlgwnxR85L6O29Kjjq-cRbiwFlw4JlrxJwb2WxRU3tFgdjdFfnSQgsRj4wHDA1H48OT_JjGnWsqw8nvUy4hP5byZJfT7ROg8JdEC41uoF2EABrqgxuJyg8gGbJt1hPo6hvqjGgMCg4n9AqRmyFcWtvUQ",
-        e: "AQAB"
-    };
-
     const symmetricKeyData = 'd1210700aab38102789b9c455e915a5c7912bf551e92908a492a73133c6310e5';
-    const symmetricKeyBuffer: Uint8Array = hexToUint8Array(symmetricKeyData);
+    const symmetricKeyBuffer = hexToUint8Array(symmetricKeyData);
+
+    console.log("Qual o tamanho da chave?", symmetricKeyBuffer.length); // Deve ser 32 para uma chave de 256 bits
+
+
 
     const handleEncryptKey = async () => {
         setStepState({
@@ -49,45 +39,33 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
         ];
 
         try {
-            console.log("Iniciando a importação da chave pública...");
-            const importedPublicKey = await crypto.subtle.importKey(
-                "jwk",
-                publicKeyData,
+            // Gerar o par de chaves
+            const keyPair = await crypto.subtle.generateKey(
                 {
                     name: "RSA-OAEP",
-                    hash: "SHA-256",
+                    modulusLength: 2048,
+                    publicExponent: new Uint8Array([1, 0, 1]),
+                    hash: { name: "SHA-256" },
                 },
                 true,
-                ["encrypt"]
+                ["encrypt", "decrypt"]
             );
-            console.log("Chave pública importada com sucesso.",importedPublicKey);
 
-            // Certifique-se de que a chave simétrica é um Uint8Array
-            if (!(symmetricKeyBuffer instanceof Uint8Array)) {
-                throw new Error("A chave simétrica não está no formato correto (Uint8Array).");
-            }
-
-            console.log("Iniciando a criptografia da chave simétrica...");
+            // Use apenas a chave pública para criptografar
             const encryptedKey = await crypto.subtle.encrypt(
                 {
                     name: "RSA-OAEP",
                 },
-                importedPublicKey,
-                symmetricKeyBuffer // Passa o Uint8Array como argumento
+                keyPair.publicKey,
+                symmetricKeyBuffer
             );
-            console.log("Chave simétrica criptografada com sucesso.");
 
-            // Passo 3: Converter para Base64
             const encryptedKeyBase64 = btoa(
                 String.fromCharCode(...new Uint8Array(encryptedKey))
             );
-            console.log("Chave criptografada convertida para Base64.");
 
-            // Salvar no localStorage
             localStorage.setItem("encryptedSymmetricKey", encryptedKeyBase64);
-            console.log("Chave criptografada salva no localStorage.");
 
-            // Atualizar o estado após cada passo
             for (let i = 0; i < steps.length; i++) {
                 await new Promise((resolve) => {
                     setTimeout(() => {
@@ -96,17 +74,17 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
                             encryptionSteps: [...prev.encryptionSteps, steps[i]],
                             currentStep: i + 1,
                         }));
-                        resolve(null);
+                        resolve();
                     }, 1000);
                 });
             }
-            console.log("Passos de criptografia concluídos.");
 
             setStepState({
                 isEncrypting: false,
                 isEncrypted: true,
+                encryptionSteps: steps,
+                currentStep: steps.length,
             });
-            console.log("Estado final da criptografia: concluído com sucesso.");
         } catch (error) {
             console.error("Erro ao cifrar a chave:", error);
             setStepState({
@@ -131,6 +109,15 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
         setIsStepComplete(isEncrypted);
     }, [isEncrypted, setIsStepComplete]);
 
+    const pulsarAnimacao = {
+        hidden: { opacity: 0, scale: 0.9 },
+        visible: {
+            opacity: 1,
+            scale: 1,
+            transition: { duration: 5, ease: "easeInOut", repeatType: "reverse" },
+        },
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -143,7 +130,6 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
             </div>
 
             <div className="relative bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-                {/* Linha animada de uma ponta a outra */}
                 <motion.div
                     initial={{ width: "0%" }}
                     animate={{ width: isEncrypting || isEncrypted ? "100%" : "0%" }}
@@ -152,7 +138,6 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
                 />
 
                 <div className="flex flex-col items-center space-y-8">
-                    {/* Ícone animado */}
                     <motion.div
                         animate={{
                             scale: [1, 1.2, 1],
@@ -170,19 +155,9 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
                         }}
                         className="p-6 rounded-full"
                     >
-                        <Shield
-                            className="w-16 h-16 text-white"
-                            style={{
-                                color: isEncrypted
-                                    ? "rgb(255,255,255)"
-                                    : isEncrypting
-                                        ? "rgb(255,255,255)"
-                                        : "rgb(255,255,255)",
-                            }}
-                        />
+                        <Shield className="w-16 h-16 text-white"/>
                     </motion.div>
 
-                    {/* Botão de ação */}
                     <Button
                         size="lg"
                         onClick={handleEncryptKey}
@@ -195,51 +170,80 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
                                     : "bg-blue-500 hover:bg-blue-600"
                         }`}
                     >
-                        {isEncrypting ? (
-                            "Protegendo..."
-                        ) : isEncrypted ? (
-                            "Proteção Concluída"
-                        ) : (
-                            "Proteger Chave"
-                        )}
+                        {isEncrypting ? "Protegendo..." : isEncrypted ? "Proteção Concluída" : "Proteger Chave"}
                     </Button>
 
-                    {/* Detalhes do progresso */}
                     <AnimatePresence>
-                        {encryptionSteps > 0 && (
+                        {Array.isArray(encryptionSteps) && encryptionSteps.length > 0 && (
                             <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
+                                initial={{opacity: 0}}
+                                animate={{opacity: 1}}
+                                exit={{opacity: 0}}
                                 className="w-full mt-6 space-y-4"
                             >
                                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                     {encryptionSteps.map((step, index) => (
-                                        <motion.div
-                                            key={index}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            className="flex items-center space-x-2"
-                                        >
-                                            <CheckCircle className="text-green-500" />
-                                            <span className="text-gray-600">{step}</span>
-                                        </motion.div>
+                                        <div key={index} className="flex items-center space-x-3">
+                                            <CheckCircle className="text-green-500 w-5 h-5"/>
+                                            <p className="text-gray-700">{step}</p>
+                                        </div>
                                     ))}
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* Informações sobre o processo */}
+                    <div className="space-y-4 mt-8">
+                        <motion.div
+                            className="flex items-center space-x-3"
+                            initial="hidden"
+                            animate="visible"
+                            variants={pulsarAnimacao}
+                            transition={{delay: 0}}
+                        >
+                            <FileText className="w-60 h-6 text-blue-400"/>
+                            <p className="text-blue-400">
+                                A chave assimétrica é usada para criptografar a chave simétrica, garantindo
+                                a segurança durante a troca de dados. Este processo impede que a chave simétrica
+                                seja interceptada durante a comunicação.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            className="flex items-center space-x-3"
+                            initial="hidden"
+                            animate="visible"
+                            variants={pulsarAnimacao}
+                            transition={{delay: 5}}
+                        >
+                            <Lock className="w-60 h-6 text-yellow-600"/>
+                            <p className="text-yellow-600">
+                                O uso do algoritmo RSA-2048 garante que a chave seja protegida com segurança
+                                robusta, utilizando criptografia assimétrica para assegurar a confidencialidade.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            className="flex items-center space-x-3"
+                            initial="hidden"
+                            animate="visible"
+                            variants={pulsarAnimacao}
+                            transition={{delay: 10}}
+                        >
+                            <CheckCircle className="w-60 h-6 text-green-600"/>
+                            <p className="text-green-600">
+                                Após a criptografia, a chave é convertida para Base64 para facilitar o armazenamento
+                                e a transmissão sem risco de perda de dados.
+                            </p>
+                        </motion.div>
+                    </div>
                 </div>
             </div>
 
-            <div className="text-center mt-6">
-                <Button
-                    onClick={handleReset}
-                    className="bg-gray-300 hover:bg-gray-400"
-                >
-                    Reiniciar
-                </Button>
-            </div>
+            <Button size="lg" onClick={handleReset} className="bg-gray-300 hover:bg-gray-400">
+                Resetar
+            </Button>
         </motion.div>
     );
 }
