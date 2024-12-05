@@ -1,5 +1,5 @@
 import {motion} from 'framer-motion';
-import {useState} from 'react';
+import React, {useState} from 'react';
 import {FaFile, FaLock, FaSignature, FaCheckCircle, FaKey, FaFileSignature} from 'react-icons/fa';
 import {Button} from "@/components/utils/components/button";
 
@@ -82,6 +82,20 @@ export function Assinatura({stepState, setStepState, setIsStepComplete}) {
         if (!isEncrypted) return 'Cifre o documento para finalizar.';
         return 'Documento assinado e cifrado com sucesso!';
     };
+
+    const handleReset = () => {
+        setStepState({
+            isSigningAnimating: false,
+            isSigned: false,
+            isEncryptingAnimating: false,
+            isEncrypted: false,
+        });
+
+        // Adicionalmente, você pode redefinir outras variáveis ou estados que precisam voltar ao estado inicial
+        setIsSuccess(false);
+        setIsStepComplete(false);
+    };
+
 
     return (
         <div
@@ -185,6 +199,13 @@ export function Assinatura({stepState, setStepState, setIsStepComplete}) {
             } transition-all duration-300 ease-in-out`}>
                 {getStatusText()}
             </p>
+
+            <Button
+                onClick={handleReset}
+                className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 transition-all"
+            >
+                Resetar
+            </Button>
 
         </div>
 

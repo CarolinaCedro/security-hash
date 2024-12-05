@@ -9,6 +9,7 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/solid";
 import {ShieldCheckIcon} from "@heroicons/react/24/outline";
+import {Button} from "@/components/utils/components/button";
 
 const ANIMATION_DELAY = 800;
 const MOVEMENT_DELAY = 4000;
@@ -213,6 +214,12 @@ export function Encripty({ stepState, setStepState, setIsStepComplete }) {
               {mensagemSucesso}
             </motion.div>
         )}
+
+        <Button size="lg" onClick={handleReset} className="bg-gray-300 hover:bg-gray-400">
+          Resetar
+        </Button>
+
       </div>
+
   );
 }
