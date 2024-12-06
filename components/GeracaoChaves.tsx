@@ -3,6 +3,7 @@ import {motion} from "framer-motion";
 import {FaInfoCircle, FaKey} from "react-icons/fa";
 import NodeRSA from "node-rsa";
 import CryptoJS from "crypto-js";
+import axios from "axios";
 import {Informativos} from "@/components/Informativos";
 import {Button} from "@/components/utils/components/button";
 
@@ -15,7 +16,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
         showRSAKeys,
         showAESKey,
         rsaKeys,
-        aesKey
+        aesKey,
     } = stepState;
 
     const handleGenerateKeys = () => {
@@ -30,6 +31,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
             // Gerar chave AES
             const aesKey = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
 
+
             setStepState({
                 rsaGenerated: true,
                 aesGenerated: true,
@@ -40,20 +42,69 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                 rsaKeys: {publicKey, privateKey},
                 aesKey,
             });
+
+            // Enviar chaves para o backend
+            saveKeysToBackend(publicKey, privateKey, aesKey);
         }, 2000);
     };
 
+    const formatKeyForBackend = (key) => {
+        // Remove cabeçalhos, rodapés e quebras de linha do PEM
+        return key
+            .replace(/-----BEGIN [\w\s]+-----/g, "") // Remove o cabeçalho
+            .replace(/-----END [\w\s]+-----/g, "") // Remove o rodapé
+            .replace(/\n/g, ""); // Remove quebras de linha
+    };
+
+    const saveKeysToBackend = async (publicKey, privateKey, aesKey) => {
+
+        console.log("as chaves sendo passadas para ser salvas", publicKey, privateKey, aesKey)
+
+        try {
+            // Formatar as chaves para o formato esperado pelo backend
+            const formattedPublicKey = formatKeyForBackend(publicKey);
+            const formattedPrivateKey = formatKeyForBackend(privateKey);
+
+            // Salvar chave pública
+            const publicKeyResponse = await axios.post("http://localhost:8083/rsa/chaves", {
+                tipo: "publica",
+                chavePem: formattedPublicKey,
+            });
+
+            // Salvar chave privada
+            const privateKeyResponse = await axios.post("http://localhost:8083/rsa/chaves", {
+                tipo: "privada",
+                chavePem: formattedPrivateKey,
+            });
+
+            // Salvar chave AES (não precisa de formatação, supondo que já está no formato adequado)
+            const aesKeyResponse = await axios.post("http://localhost:8083/aes/chaves", {
+                chaveBase64: aesKey,
+            });
+
+            // Exibir mensagem de sucesso
+            console.log("Todas as chaves foram salvas com sucesso!");
+            alert("Dados salvos com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar chaves no backend", error);
+            alert("Erro ao salvar dados. Verifique o console para mais detalhes.");
+        }
+    };
+
+
     const handleReset = () => {
-        setStepState({
-            rsaGenerated: false,
-            aesGenerated: false,
-            showRSALoading: false,
-            showAESLoading: false,
-            showRSAKeys: false,
-            showAESKey: false,
-            rsaKeys: null,
-            aesKey: null,
-        });
+        setTimeout(() => {
+            setStepState({
+                rsaGenerated: false,
+                aesGenerated: false,
+                showRSALoading: false,
+                showAESLoading: false,
+                showRSAKeys: false,
+                showAESKey: false,
+                rsaKeys: null,
+                aesKey: null,
+            });
+        }, 2000);
     };
 
     const downloadFile = (filename, content) => {
@@ -139,7 +190,6 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                             </div>
                         </motion.div>
                     </div>
-
                 )}
 
                 {(showRSAKeys || showAESKey) && (
@@ -171,7 +221,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                                             textAlign: 'center',
                                             display: 'flex',
                                             justifyContent: 'center',
-                                            alignItems: 'center'
+                                            alignItems: 'center',
                                         }}
                                         onClick={() => downloadFile("publicKey.pem", rsaKeys.publicKey)}
                                     >
@@ -184,9 +234,10 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                                             textAlign: 'center',
                                             display: 'flex',
                                             justifyContent: 'center',
-                                            alignItems: 'center'
+                                            alignItems: 'center',
                                         }}
-                                        onClick={() => downloadFile("privateKey.pem", rsaKeys.privateKey)}>
+                                        onClick={() => downloadFile("privateKey.pem", rsaKeys.privateKey)}
+                                    >
                                         Baixar Chave Privada
                                     </Button>
                                 </>
@@ -207,9 +258,10 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                                         textAlign: 'center',
                                         display: 'flex',
                                         justifyContent: 'center',
-                                        alignItems: 'center'
+                                        alignItems: 'center',
                                     }}
-                                    onClick={() => downloadFile("aesKey.txt", aesKey)}>
+                                    onClick={() => downloadFile("aesKey.txt", aesKey)}
+                                >
                                     Baixar Chave AES
                                 </Button>
                             )}
@@ -220,8 +272,9 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                 {rsaGenerated && aesGenerated && (
                     <Button
                         onClick={handleReset}
-                        className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 transition-all"
+                        className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 font-medium shadow-md transition-all duration-200 bg-red-500 hover:bg-red-600"
                     >
+                        <FaInfoCircle className="text-xl"/>
                         Resetar
                     </Button>
                 )}

@@ -5,21 +5,18 @@ import { TooltipProvider } from "@/components/utils/components/tooltip";
 
 export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
     const { publicKey, file, fileHash } = stepState;
-    const [fileInfo, setFileInfo] = useState(null); // Estado para armazenar as informações do arquivo
+    const [fileInfo, setFileInfo] = useState(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        // Verifica se a chave pública e o arquivo foram carregados e atualiza o estado de "completude" da etapa
         const isPublicKeyValid = publicKey?.trim().length > 0;
         const isFileValid = !!file;
-
         if (isPublicKeyValid && isFileValid !== stepState.isStepComplete) {
             setIsStepComplete(isPublicKeyValid && isFileValid);
         }
     }, [file, publicKey, stepState.isStepComplete, setIsStepComplete]);
 
     useEffect(() => {
-        // Restaura a chave pública e o arquivo do localStorage, se existirem
         const savedPublicKey = localStorage.getItem("keyPub");
         const savedFile = localStorage.getItem("file");
 
@@ -31,81 +28,90 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
         }
     }, [publicKey, file, setStepState]);
 
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
         if (!selectedFile) return;
 
         setStepState({ file: selectedFile, fileContent: null });
 
-        const isViewableFile = /\.(txt|json|md|csv|log|xml|yaml|yml|html|css|js|ts|jsx|tsx)$/i.test(selectedFile.name);
-
         const reader = new FileReader();
-        if (isViewableFile) {
-            reader.onload = () => {
-                const content = reader.result as string;
-                setStepState({ fileContent: content });
-                calculateHash(content).then((hash) => setStepState({ fileHash: hash }));
-                // Definir informações do arquivo
-                setFileInfo({
-                    name: selectedFile.name,
-                    size: (selectedFile.size / 1024).toFixed(2), // Converte o tamanho para KB
-                });
-            };
+        reader.onload = async () => {
+            const content = reader.result as string | ArrayBuffer;
+            const base64Content = btoa(
+                new Uint8Array(content instanceof ArrayBuffer ? content : new TextEncoder().encode(content))
+                    .reduce((data, byte) => data + String.fromCharCode(byte), "")
+            );
+            const hash = await calculateHash(content);
+
+            setStepState({ fileContent: base64Content, fileHash: hash });
+            setFileInfo({
+                name: selectedFile.name,
+                size: (selectedFile.size / 1024).toFixed(2),
+            });
+
+            await handleFileUpload({
+                nomeArquivo: selectedFile.name,
+                tipoArquivo: selectedFile.type,
+                arquivoOriginal: base64Content,
+            });
+        };
+
+        if (selectedFile.type.match(/text|json|xml|csv|html|css|js|ts|md/)) {
             reader.readAsText(selectedFile);
         } else {
-            reader.onload = () => {
-                const content = reader.result as ArrayBuffer;
-                calculateHash(content).then((hash) => setStepState({ fileHash: hash }));
-                // Definir informações do arquivo
-                setFileInfo({
-                    name: selectedFile.name,
-                    size: (selectedFile.size / 1024).toFixed(2), // Converte o tamanho para KB
-                });
-            };
             reader.readAsArrayBuffer(selectedFile);
         }
     };
+
+    const handleFileUpload = async (arquivo: {
+        nomeArquivo: string;
+        tipoArquivo: string;
+        arquivoOriginal: string;
+    }) => {
+        try {
+            const response = await fetch("http://localhost:8083/arquivo", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(arquivo),
+            });
+
+            if (!response.ok) {
+                throw new Error("Erro ao enviar o arquivo");
+            }
+
+            const result = await response.json();
+            console.log("Arquivo salvo com sucesso:", result);
+
+            // Alerta de sucesso
+            alert("Arquivo enviado com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar o arquivo:", error);
+
+            // Alerta de erro
+            alert("Erro ao salvar o arquivo. Tente novamente.");
+        }
+    };
+
 
     const triggerFileInput = () => {
         fileInputRef.current?.click();
     };
 
-    const handlePublicKeyChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = event.target.value;
-        setStepState({ publicKey: value });
-    };
-
     const handleReset = () => {
         setStepState({
-            publicKey: '',
+            publicKey: "",
             file: null,
             fileContent: null,
             fileHash: null,
         });
         if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+            fileInputRef.current.value = "";
         }
-        // Remover do localStorage após reset
         localStorage.removeItem("keyPub");
         localStorage.removeItem("file");
-        setFileInfo(null); // Limpar informações do arquivo
-    };
-
-    const handlePublicKeyFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = event.target.files?.[0];
-        if (!selectedFile) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            const content = reader.result as string;
-            setStepState({ publicKey: content });
-            localStorage.setItem("keyPub", content); // Salvar chave pública no localStorage
-        };
-        reader.onerror = () => {
-            alert("Erro ao ler o arquivo da chave pública. Tente novamente.");
-        };
-
-        reader.readAsText(selectedFile);
+        setFileInfo(null);
     };
 
     return (
@@ -114,31 +120,51 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
                 <div className="border-b pb-4">
                     <h2 className="text-3xl font-bold text-gray-800">Preparação do Ambiente</h2>
                 </div>
+                <div className="border-b pb-4 bg-blue-50 p-4 rounded-lg shadow-md flex items-start mb-4">
+                    <div className="text-blue-600 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                             stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-semibold text-blue-800">
+                            Importante:
+                        </h2>
+                        <p className="text-sm text-blue-700 mt-1">
+                            Não é necessário subir nenhuma chave nesta etapa. Elas já foram geradas no processo
+                            anterior, salvas com segurança,
+                            e serão recuperadas automaticamente nos estágios posteriores.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="border-b pb-4 bg-green-50 p-4 rounded-lg shadow-md flex items-start">
+                    <div className="text-green-600 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                             stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M12 9v6m0 0l3-3m-3 3l-3-3m6 3a9 9 0 1 1-9-9 9 9 0 0 1 9 9z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-semibold text-green-800">
+                            Segurança do Arquivo:
+                        </h2>
+                        <p className="text-sm text-green-700 mt-1">
+                            Para garantir a segurança do arquivo, é necessário fazer o upload do arquivo na etapa atual.
+                            Isso permitirá que o sistema
+                            processe e armazene o arquivo de forma segura, utilizando as chaves geradas no processo
+                            anterior.
+                        </p>
+                    </div>
+                </div>
+
 
                 <div className="space-y-6">
-                    {/* Chave Pública */}
-                    <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-300">
-                        <div className="mb-6">
-                            <Label htmlFor="publicKeyInput" className="text-lg font-semibold text-gray-700">
-                                Chave Pública do Destinatário
-                            </Label>
-                            <p className="text-sm text-gray-500 mb-4">Selecione o arquivo contendo a chave pública
-                                (formato PEM)</p>
-
-                            <input
-                                id="publicKeyInput"
-                                type="file"
-                                accept=".pem"
-                                className="block w-full text-sm text-gray-500 border border-gray-300 rounded-lg shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
-                                onChange={handlePublicKeyFileSelect}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Arquivo para Envio */}
                     <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-300">
                         <Label htmlFor="fileInput" className="text-lg font-semibold text-gray-700">Arquivo</Label>
-
                         <input
                             ref={fileInputRef}
                             id="fileInput"
@@ -148,15 +174,12 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
                         />
                     </div>
 
-                    {/* Exibindo informações sobre o arquivo carregado */}
                     {fileInfo && (
                         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-300">
                             <h3 className="text-lg font-semibold text-gray-700">Informações do Arquivo</h3>
                             <p className="text-sm text-gray-500">Nome: {fileInfo.name}</p>
                             <p className="text-sm text-gray-500">Tamanho: {fileInfo.size} KB</p>
-                            {fileHash && (
-                                <p className="text-sm text-gray-500">Hash SHA-256: {fileHash}</p>
-                            )}
+                            {fileHash && <p className="text-sm text-gray-500">Hash SHA-256: {fileHash}</p>}
                         </div>
                     )}
                 </div>

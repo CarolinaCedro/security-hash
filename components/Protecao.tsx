@@ -1,25 +1,81 @@
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle, Shield, Lock, FileText } from "lucide-react";
-import { Button } from "@/components/utils/components/button";
+import {useEffect, useState} from "react";
+import {AnimatePresence, motion} from "framer-motion";
+import {CheckCircle, Shield, Lock, FileText} from "lucide-react";
+import {Button} from "@/components/utils/components/button";
 
-export function Protecao({ stepState, setStepState, setIsStepComplete }) {
-    const { isEncrypting, isEncrypted, encryptionSteps } = stepState;
+export function Protecao({stepState, setStepState, setIsStepComplete}) {
+    const {isEncrypting, isEncrypted, encryptionSteps} = stepState;
+    const [publicKey, setpublicKey] = useState<CryptoKey>(null);
+    const [symmetricKey, setSymmetricKey] = useState<Uint8Array>(null);
+    const [keyCifrada, setkeyCifrada] = useState<any>(null);
 
-    // Função para converter Hex em Uint8Array
-    function hexToUint8Array(hex) {
-        const bytes = [];
-        for (let i = 0; i < hex.length; i += 2) {
-            bytes.push(parseInt(hex.substr(i, 2), 16));
+
+
+    async function fetchPublicKey() {
+        try {
+            const response = await fetch('http://localhost:8083/rsa/chaves');
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const publicKeyPem = data.find(chave => chave.tipo === 'publica')?.chavePem;
+                if (!publicKeyPem) throw new Error("Chave pública não encontrada no backend.");
+
+                // Remova cabeçalhos e rodapés da chave PEM
+                const cleanPem = publicKeyPem.replace(/-----\w+ PUBLIC KEY-----/g, '').replace(/\n/g, '');
+
+                // Converta para ArrayBuffer
+                const binaryDer = Uint8Array.from(atob(cleanPem), char => char.charCodeAt(0)).buffer;
+
+                // Importa a chave pública
+                const publicKey = await crypto.subtle.importKey(
+                    'spki',
+                    binaryDer,
+                    {name: 'RSA-OAEP', hash: {name: 'SHA-256'}},
+                    true,
+                    ['encrypt']
+                );
+
+                console.log("Chave pública importada:", publicKey);
+                setpublicKey(publicKey)
+                return publicKey;
+            } else {
+                throw new Error("Nenhuma chave encontrada no backend.");
+            }
+        } catch (error) {
+            console.error("Erro ao buscar chave pública:", error);
         }
-        return new Uint8Array(bytes);
     }
 
-    const symmetricKeyData = 'd1210700aab38102789b9c455e915a5c7912bf551e92908a492a73133c6310e5';
-    const symmetricKeyBuffer = hexToUint8Array(symmetricKeyData);
+// Função para buscar a chave simétrica do backend
+    async function fetchSymmetricKey() {
+        try {
+            const response = await fetch('http://localhost:8083/aes/chaves');
+            const data = await response.json();
 
-    console.log("Qual o tamanho da chave?", symmetricKeyBuffer.length); // Deve ser 32 para uma chave de 256 bits
+            if (data && data.length > 0) {
+                const hexKey = data[0].chaveBase64; // Caso seja uma string base64 ou hex
 
+                // Converta de hex para Uint8Array
+                const hexToUint8Array = hex => {
+                    const array = new Uint8Array(hex.length / 2);
+                    for (let i = 0; i < array.length; i++) {
+                        array[i] = parseInt(hex.substr(i * 2, 2), 16);
+                    }
+                    return array;
+                };
+
+                const symmetricKeyBuffer = hexToUint8Array(hexKey);
+                console.log("Chave simétrica importada:", symmetricKeyBuffer);
+
+                setSymmetricKey(symmetricKeyBuffer)
+                return symmetricKeyBuffer;
+            } else {
+                throw new Error("Nenhuma chave simétrica encontrada no backend.");
+            }
+        } catch (error) {
+            console.error("Erro ao buscar chave simétrica:", error);
+        }
+    }
 
 
     const handleEncryptKey = async () => {
@@ -39,32 +95,39 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
         ];
 
         try {
-            // Gerar o par de chaves
-            const keyPair = await crypto.subtle.generateKey(
-                {
-                    name: "RSA-OAEP",
-                    modulusLength: 2048,
-                    publicExponent: new Uint8Array([1, 0, 1]),
-                    hash: { name: "SHA-256" },
-                },
-                true,
-                ["encrypt", "decrypt"]
-            );
 
-            // Use apenas a chave pública para criptografar
+            const publicKey = await fetchPublicKey();
+            const symmetricKey = await fetchSymmetricKey();
+
+            if (!publicKey || !symmetricKey) throw new Error("Falha ao obter as chaves.");
+
+            // Criptografar a chave simétrica com a chave pública
             const encryptedKey = await crypto.subtle.encrypt(
-                {
-                    name: "RSA-OAEP",
+                {name: 'RSA-OAEP'},
+                publicKey,
+                symmetricKey
+            );
+
+            const encryptedKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedKey)));
+            setkeyCifrada(encryptedKeyBase64)
+
+            console.log("Chave simétrica criptografada (Base64):", encryptedKeyBase64);
+
+            // Enviar chave cifrada para o backend
+            // Enviar chave cifrada para o backend
+            const response = await fetch("http://localhost:8083/chave-simetrica-cifrada", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-                keyPair.publicKey,
-                symmetricKeyBuffer
-            );
+                body: JSON.stringify({ chaveSimetricaCifraca: encryptedKeyBase64 }),
+            });
 
-            const encryptedKeyBase64 = btoa(
-                String.fromCharCode(...new Uint8Array(encryptedKey))
-            );
-
-            localStorage.setItem("encryptedSymmetricKey", encryptedKeyBase64);
+            if (response.ok) {
+                // alert("Senha salva com sucesso!");
+            } else {
+                alert("Erro ao salvar a senha no backend.");
+            }
 
             for (let i = 0; i < steps.length; i++) {
                 await new Promise((resolve) => {
@@ -110,18 +173,26 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
     }, [isEncrypted, setIsStepComplete]);
 
     const pulsarAnimacao = {
-        hidden: { opacity: 0, scale: 0.9 },
+        hidden: {opacity: 0, scale: 0.9},
         visible: {
             opacity: 1,
             scale: 1,
-            transition: { duration: 5, ease: "easeInOut", repeatType: "reverse" },
+            transition: {duration: 5, ease: "easeInOut", repeatType: "reverse"},
         },
+    };
+
+    const downloadFile = (filename, content) => {
+        const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
     };
 
     return (
         <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{opacity: 0}}
+            animate={{opacity: 1}}
             className="max-w-3xl mx-auto p-6 space-y-6"
         >
             <div className="space-y-4">
@@ -131,9 +202,9 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
 
             <div className="relative bg-white p-8 rounded-xl shadow-sm border border-gray-200">
                 <motion.div
-                    initial={{ width: "0%" }}
-                    animate={{ width: isEncrypting || isEncrypted ? "100%" : "0%" }}
-                    transition={{ duration: 6, ease: "linear" }}
+                    initial={{width: "0%"}}
+                    animate={{width: isEncrypting || isEncrypted ? "100%" : "0%"}}
+                    transition={{duration: 6, ease: "linear"}}
                     className="absolute top-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-red-500 to-green-500"
                 />
 
@@ -241,9 +312,23 @@ export function Protecao({ stepState, setStepState, setIsStepComplete }) {
                 </div>
             </div>
 
-            <Button size="lg" onClick={handleReset} className="bg-gray-300 hover:bg-gray-400">
-                Resetar
-            </Button>
+            <div className="w-full h-20 flex justify-between">
+                <Button size="lg" onClick={handleReset} className="bg-gray-300 hover:bg-gray-400">
+                    Resetar
+                </Button>
+                {keyCifrada && (
+                    <Button
+                        size="lg"
+                        onClick={() => downloadFile("chave-aes-cifrada", keyCifrada)}
+                        className="bg-yellow-500"
+                    >
+                        Baixar AES cifrada
+                    </Button>
+                )}
+
+            </div>
+
+
         </motion.div>
     );
 }
