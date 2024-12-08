@@ -6,76 +6,8 @@ import {Button} from "@/components/utils/components/button";
 export function Protecao({stepState, setStepState, setIsStepComplete}) {
     const {isEncrypting, isEncrypted, encryptionSteps} = stepState;
     const [publicKey, setpublicKey] = useState<CryptoKey>(null);
-    const [symmetricKey, setSymmetricKey] = useState<Uint8Array>(null);
+    const [symmetricKey, setSymmetricKey] = useState(null);
     const [keyCifrada, setkeyCifrada] = useState<any>(null);
-
-
-
-    async function fetchPublicKey() {
-        try {
-            const response = await fetch('http://localhost:8083/rsa/chaves');
-            const data = await response.json();
-
-            if (data && data.length > 0) {
-                const publicKeyPem = data.find(chave => chave.tipo === 'publica')?.chavePem;
-                if (!publicKeyPem) throw new Error("Chave pública não encontrada no backend.");
-
-                // Remova cabeçalhos e rodapés da chave PEM
-                const cleanPem = publicKeyPem.replace(/-----\w+ PUBLIC KEY-----/g, '').replace(/\n/g, '');
-
-                // Converta para ArrayBuffer
-                const binaryDer = Uint8Array.from(atob(cleanPem), char => char.charCodeAt(0)).buffer;
-
-                // Importa a chave pública
-                const publicKey = await crypto.subtle.importKey(
-                    'spki',
-                    binaryDer,
-                    {name: 'RSA-OAEP', hash: {name: 'SHA-256'}},
-                    true,
-                    ['encrypt']
-                );
-
-                console.log("Chave pública importada:", publicKey);
-                setpublicKey(publicKey)
-                return publicKey;
-            } else {
-                throw new Error("Nenhuma chave encontrada no backend.");
-            }
-        } catch (error) {
-            console.error("Erro ao buscar chave pública:", error);
-        }
-    }
-
-// Função para buscar a chave simétrica do backend
-    async function fetchSymmetricKey() {
-        try {
-            const response = await fetch('http://localhost:8083/aes/chaves');
-            const data = await response.json();
-
-            if (data && data.length > 0) {
-                const hexKey = data[0].chaveBase64; // Caso seja uma string base64 ou hex
-
-                // Converta de hex para Uint8Array
-                const hexToUint8Array = hex => {
-                    const array = new Uint8Array(hex.length / 2);
-                    for (let i = 0; i < array.length; i++) {
-                        array[i] = parseInt(hex.substr(i * 2, 2), 16);
-                    }
-                    return array;
-                };
-
-                const symmetricKeyBuffer = hexToUint8Array(hexKey);
-                console.log("Chave simétrica importada:", symmetricKeyBuffer);
-
-                setSymmetricKey(symmetricKeyBuffer)
-                return symmetricKeyBuffer;
-            } else {
-                throw new Error("Nenhuma chave simétrica encontrada no backend.");
-            }
-        } catch (error) {
-            console.error("Erro ao buscar chave simétrica:", error);
-        }
-    }
 
 
     const handleEncryptKey = async () => {
@@ -96,51 +28,18 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
 
         try {
 
-            const publicKey = await fetchPublicKey();
-            const symmetricKey = await fetchSymmetricKey();
 
-            if (!publicKey || !symmetricKey) throw new Error("Falha ao obter as chaves.");
-
-            // Criptografar a chave simétrica com a chave pública
-            const encryptedKey = await crypto.subtle.encrypt(
-                {name: 'RSA-OAEP'},
-                publicKey,
-                symmetricKey
-            );
-
-            const encryptedKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedKey)));
-            setkeyCifrada(encryptedKeyBase64)
-
-            console.log("Chave simétrica criptografada (Base64):", encryptedKeyBase64);
-
-            // Enviar chave cifrada para o backend
-            // Enviar chave cifrada para o backend
-            const response = await fetch("http://localhost:8083/chave-simetrica-cifrada", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ chaveSimetricaCifraca: encryptedKeyBase64 }),
+            const protecao = await fetch('http://localhost:8083/aes/chaves/cifrar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
             });
 
-            if (response.ok) {
-                // alert("Senha salva com sucesso!");
-            } else {
-                alert("Erro ao salvar a senha no backend.");
-            }
+            if (!protecao.ok) throw new Error('Erro ao cifrar chave simetrica.');
 
-            for (let i = 0; i < steps.length; i++) {
-                await new Promise((resolve) => {
-                    setTimeout(() => {
-                        setStepState((prev) => ({
-                            ...prev,
-                            encryptionSteps: [...prev.encryptionSteps, steps[i]],
-                            currentStep: i + 1,
-                        }));
-                        resolve();
-                    }, 1000);
-                });
-            }
+            const protecaoChaveSimetrica = await protecao.json(); // Assumindo que esta resposta é JSON
+            setSymmetricKey(protecaoChaveSimetrica?.chaveSimetricaCifraca)
+            console.log('Chave Simetrica Cifrada:', protecaoChaveSimetrica); // Debug da resposta da assinatura
+
 
             setStepState({
                 isEncrypting: false,
@@ -148,12 +47,14 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
                 encryptionSteps: steps,
                 currentStep: steps.length,
             });
+
+            // alert("Chave Simetrica Cifrada Com Sucesso !!")
         } catch (error) {
             console.error("Erro ao cifrar a chave:", error);
             setStepState({
                 isEncrypting: false,
                 isEncrypted: false,
-                encryptionSteps: ["Erro ao realizar a criptografia."],
+                encryptionSteps: ["Erro ao realizar a cifragem da chave simetrica."],
                 currentStep: steps.length,
             });
         }
@@ -167,6 +68,20 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
             currentStep: 0,
         });
     };
+
+    // Formatar a chave simétrica em várias linhas
+    const formatKey = (key) => {
+        const chunkSize = 64; // Tamanho da linha (em caracteres)
+        const chunks = key.match(new RegExp('.{1,' + chunkSize + '}', 'g')); // Quebra a chave em pedaços
+        return chunks ? chunks.join('\n') : key; // Junta as linhas quebradas
+    };
+
+    const getKeySizeInBytes = (key) => {
+        const encoder = new TextEncoder();
+        const encoded = encoder.encode(key);
+        return encoded.length; // Retorna o tamanho da chave em bytes
+    };
+
 
     useEffect(() => {
         setIsStepComplete(isEncrypted);
@@ -247,22 +162,49 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
                     <AnimatePresence>
                         {Array.isArray(encryptionSteps) && encryptionSteps.length > 0 && (
                             <motion.div
-                                initial={{opacity: 0}}
-                                animate={{opacity: 1}}
-                                exit={{opacity: 0}}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
                                 className="w-full mt-6 space-y-4"
                             >
                                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                     {encryptionSteps.map((step, index) => (
                                         <div key={index} className="flex items-center space-x-3">
-                                            <CheckCircle className="text-green-500 w-5 h-5"/>
+                                            <CheckCircle className="text-green-500 w-5 h-5" />
                                             <p className="text-gray-700">{step}</p>
                                         </div>
                                     ))}
                                 </div>
+
+                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                    <p className="font-semibold text-gray-900">
+                                        Chave Simétrica Protegida:
+                                    </p>
+                                    {symmetricKey ? (
+                                        <div>
+                                            <code className="text-sm text-blue-600 break-words block whitespace-pre-line">
+                                                {formatKey(symmetricKey)}
+                                            </code>
+                                            <div className="mt-2 text-sm text-gray-600">
+                                                <p>
+                                                    <strong>Tamanho:</strong> {getKeySizeInBytes(symmetricKey)} bytes
+                                                </p>
+                                                <p>
+                                                    <strong>Algoritmo:</strong> AES
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">
+                                            Aguardando retorno do backend...
+                                        </p>
+                                    )}
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+
 
                     {/* Informações sobre o processo */}
                     <div className="space-y-4 mt-8">
@@ -308,9 +250,11 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
                                 e a transmissão sem risco de perda de dados.
                             </p>
                         </motion.div>
+
                     </div>
                 </div>
             </div>
+
 
             <div className="w-full h-20 flex justify-between">
                 <Button size="lg" onClick={handleReset} className="bg-gray-300 hover:bg-gray-400">

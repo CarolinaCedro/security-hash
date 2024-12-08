@@ -1,9 +1,6 @@
 import {useEffect} from "react";
 import {motion} from "framer-motion";
 import {FaInfoCircle, FaKey} from "react-icons/fa";
-import NodeRSA from "node-rsa";
-import CryptoJS from "crypto-js";
-import axios from "axios";
 import {Informativos} from "@/components/Informativos";
 import {Button} from "@/components/utils/components/button";
 
@@ -19,77 +16,67 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
         aesKey,
     } = stepState;
 
-    const handleGenerateKeys = () => {
+    async function handleGenerateKeysBackend() {
+        // Definindo o estado de carregamento
         setStepState({showRSALoading: true, showAESLoading: true});
 
-        setTimeout(() => {
-            // Gerar chave RSA
-            const rsa = new NodeRSA({b: 2048});
-            const publicKey = rsa.exportKey("public");
-            const privateKey = rsa.exportKey("private");
+        try {
+            // Fazendo a requisição para gerar as chaves RSA
+            const rsaResponse = await fetch('http://localhost:8083/rsa/chaves/gerarChaves', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
 
-            // Gerar chave AES
-            const aesKey = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
+            if (!rsaResponse.ok) {
+                throw new Error('Erro ao gerar chaves RSA');
+            }
 
+            const rsaData = await rsaResponse.json();
+            const {publicKey, privateKey} = rsaData.keyPar;
 
+            // Fazendo a requisição para gerar a chave AES
+            const aesResponse = await fetch('http://localhost:8083/aes/chaves/gerar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!aesResponse.ok) {
+                throw new Error('Erro ao gerar chave AES');
+            }
+
+            const aesKey = await aesResponse.text(); // Pegando a chave AES como string
+
+            // Atualizando o estado após gerar as chaves
+            setTimeout(() => {
+                setStepState({
+                    rsaGenerated: true,
+                    aesGenerated: true,
+                    showRSALoading: false,
+                    showAESLoading: false,
+                    showRSAKeys: true,
+                    showAESKey: true,
+                    rsaKeys: {publicKey, privateKey}, // Chaves RSA
+                    aesKey, // Chave AES
+                });
+            }, 2000);
+
+            alert("Chaves Geradas com sucesso!")
+
+        } catch (error) {
+            // Tratando erros durante as requisições
+            console.error('Erro ao gerar as chaves:', error);
+            alert('Erro ao gerar as chaves')
             setStepState({
-                rsaGenerated: true,
-                aesGenerated: true,
                 showRSALoading: false,
                 showAESLoading: false,
-                showRSAKeys: true,
-                showAESKey: true,
-                rsaKeys: {publicKey, privateKey},
-                aesKey,
+                error: 'Erro ao gerar as chaves.',
             });
-
-            // Enviar chaves para o backend
-            saveKeysToBackend(publicKey, privateKey, aesKey);
-        }, 2000);
-    };
-
-    const formatKeyForBackend = (key) => {
-        // Remove cabeçalhos, rodapés e quebras de linha do PEM
-        return key
-            .replace(/-----BEGIN [\w\s]+-----/g, "") // Remove o cabeçalho
-            .replace(/-----END [\w\s]+-----/g, "") // Remove o rodapé
-            .replace(/\n/g, ""); // Remove quebras de linha
-    };
-
-    const saveKeysToBackend = async (publicKey, privateKey, aesKey) => {
-
-        console.log("as chaves sendo passadas para ser salvas", publicKey, privateKey, aesKey)
-
-        try {
-            // Formatar as chaves para o formato esperado pelo backend
-            const formattedPublicKey = formatKeyForBackend(publicKey);
-            const formattedPrivateKey = formatKeyForBackend(privateKey);
-
-            // Salvar chave pública
-            const publicKeyResponse = await axios.post("http://localhost:8083/rsa/chaves", {
-                tipo: "publica",
-                chavePem: formattedPublicKey,
-            });
-
-            // Salvar chave privada
-            const privateKeyResponse = await axios.post("http://localhost:8083/rsa/chaves", {
-                tipo: "privada",
-                chavePem: formattedPrivateKey,
-            });
-
-            // Salvar chave AES (não precisa de formatação, supondo que já está no formato adequado)
-            const aesKeyResponse = await axios.post("http://localhost:8083/aes/chaves", {
-                chaveBase64: aesKey,
-            });
-
-            // Exibir mensagem de sucesso
-            console.log("Todas as chaves foram salvas com sucesso!");
-            alert("Dados salvos com sucesso!");
-        } catch (error) {
-            console.error("Erro ao salvar chaves no backend", error);
-            alert("Erro ao salvar dados. Verifique o console para mais detalhes.");
         }
-    };
+    }
 
 
     const handleReset = () => {
@@ -125,7 +112,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
 
             <div className="flex flex-col items-center gap-6">
                 <Button
-                    onClick={handleGenerateKeys}
+                    onClick={handleGenerateKeysBackend}
                     className={`flex items-center gap-3 px-6 py-3 rounded-md text-white font-medium shadow-md transition-all duration-200 ${
                         rsaGenerated && aesGenerated ? "bg-green-500 hover:bg-green-600" : "bg-yellow-500"
                     }`}
@@ -209,12 +196,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                                         bgColor="#e3f8f3"
                                         textColor="#05668d"
                                     />
-                                    <Informativos
-                                        title="Chave Privada RSA"
-                                        content={rsaKeys.privateKey}
-                                        bgColor="#e3f8f3"
-                                        textColor="#05668d"
-                                    />
+
                                     <Button
                                         style={{
                                             backgroundColor: "#F5CF3D",
@@ -227,6 +209,14 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                                     >
                                         Baixar Chave Pública
                                     </Button>
+
+
+                                    <Informativos
+                                        title="Chave Privada RSA"
+                                        content={rsaKeys.privateKey}
+                                        bgColor="#e3f8f3"
+                                        textColor="#05668d"
+                                    />
 
                                     <Button
                                         style={{
@@ -272,7 +262,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                 {rsaGenerated && aesGenerated && (
                     <Button
                         onClick={handleReset}
-                        className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 font-medium shadow-md transition-all duration-200 bg-red-500 hover:bg-red-600"
+                        className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 font-medium shadow-md transition-all duration-200 bg-white border-b-gray-600"
                     >
                         <FaInfoCircle className="text-xl"/>
                         Resetar

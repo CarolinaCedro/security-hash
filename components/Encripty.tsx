@@ -8,8 +8,8 @@ import {
   ClipboardDocumentCheckIcon as DocumentIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/solid";
+import { Button } from "@/components/utils/components/button";
 import {ShieldCheckIcon} from "@heroicons/react/24/outline";
-import {Button} from "@/components/utils/components/button";
 
 const ANIMATION_DELAY = 800;
 const MOVEMENT_DELAY = 4000;
@@ -74,24 +74,45 @@ export function Encripty({ stepState, setStepState, setIsStepComplete }) {
   } = stepState;
 
   const [completedSteps, setCompletedSteps] = useState(0);
+  const [empacotamento, setEmpacotamento] = useState('');
 
-  const handleEnvio = useCallback(() => {
+  const handleEnvio = useCallback(async () => {
     setStepState({ enviado: true });
 
-    PACKAGE_STEPS.forEach((_, index) => {
-      setTimeout(() => {
-        setCompletedSteps(index + 1);
-      }, index * ANIMATION_DELAY);
-    });
-
-    setTimeout(() => {
-      setStepState({
-        mensagemSucesso: "Arquivo enviado com sucesso ao destinatário!",
-        mostrarResumo: true,
-        iniciarMovimento: true,
+    try {
+      const empacotando = await fetch('http://localhost:8083/empacotamento/empacotar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
-    }, SUCCESS_DELAY);
+
+      if (!empacotando.ok) throw new Error('Erro ao empacotar dados.');
+
+      // A resposta é um texto com o caminho do arquivo
+      const empacotadoText = await empacotando.text();
+      const caminhoArquivo = empacotadoText.replace('Arquivo empacotado com sucesso: ', '').trim();
+
+      // Armazene o caminho do arquivo
+      setEmpacotamento(caminhoArquivo);
+
+      PACKAGE_STEPS.forEach((_, index) => {
+        setTimeout(() => {
+          setCompletedSteps(index + 1);
+        }, index * ANIMATION_DELAY);
+      });
+
+      setTimeout(() => {
+        setStepState({
+          mensagemSucesso: "Arquivo enviado com sucesso ao destinatário!",
+          mostrarResumo: true,
+          iniciarMovimento: true,
+        });
+      }, SUCCESS_DELAY);
+    } catch (error) {
+      console.error('Erro no envio:', error);
+      // Trate o erro conforme necessário
+    }
   }, [setStepState]);
+
 
   const handleReset = () => {
     setStepState({
@@ -158,6 +179,16 @@ export function Encripty({ stepState, setStepState, setIsStepComplete }) {
             ></motion.div>
           </div>
 
+          {empacotamento ? (
+              <div className="bg-green-100 mb-5 rounded-lg p-4 border border-gray-200">
+                <p className="font-semibold text-gray-900">
+                  Arquivo foi empacotado com sucesso!
+                </p>
+              </div>
+          ) : (
+              <p>Carregando...</p>
+          )}
+
           <div className="flex justify-center">
             <button
                 onClick={handleEnvio}
@@ -220,6 +251,5 @@ export function Encripty({ stepState, setStepState, setIsStepComplete }) {
         </Button>
 
       </div>
-
   );
 }
