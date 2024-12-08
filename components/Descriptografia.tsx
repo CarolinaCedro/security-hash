@@ -18,7 +18,7 @@ export function Descriptografia() {
         const steps = [
             {
                 title: "Recuperação da chave AES",
-                description: "Usando a chave privada RSA do professor",
+                description: "Usando a chave privada RSA",
                 icon: <KeyIcon className="w-8 h-8 text-yellow-500"/>
             },
             {
@@ -28,7 +28,7 @@ export function Descriptografia() {
             },
             {
                 title: "Verificação da assinatura",
-                description: "Usando a chave pública do aluno",
+                description: "Usando a chave pública rsa",
                 icon: <ShieldCheckIcon className="w-8 h-8 text-purple-500"/>
             },
         ];
