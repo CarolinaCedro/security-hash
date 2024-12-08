@@ -1,12 +1,13 @@
 import {useEffect, useState} from "react";
 import {AnimatePresence, motion} from "framer-motion";
-import {CheckCircle, Shield, Lock, FileText} from "lucide-react";
+import {CheckCircle, FileText, Lock, Shield} from "lucide-react";
 import {Button} from "@/components/utils/components/button";
 
 export function Protecao({stepState, setStepState, setIsStepComplete}) {
     const {isEncrypting, isEncrypted, encryptionSteps} = stepState;
     const [publicKey, setpublicKey] = useState<CryptoKey>(null);
     const [symmetricKey, setSymmetricKey] = useState(null);
+    const [symmetricOriginalKey, setSymmetricOriginalKey] = useState(null);
     const [keyCifrada, setkeyCifrada] = useState<any>(null);
 
 
@@ -36,9 +37,32 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
 
             if (!protecao.ok) throw new Error('Erro ao cifrar chave simetrica.');
 
-            const protecaoChaveSimetrica = await protecao.json(); // Assumindo que esta resposta é JSON
+            const protecaoChaveSimetrica = await protecao.json();
             setSymmetricKey(protecaoChaveSimetrica?.chaveSimetricaCifraca)
-            console.log('Chave Simetrica Cifrada:', protecaoChaveSimetrica); // Debug da resposta da assinatura
+            console.log('Chave Simetrica Cifrada:', protecaoChaveSimetrica);
+
+
+            const chaveSimetrica = await fetch('http://localhost:8083/aes/chaves', {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'},
+            });
+
+            if (!chaveSimetrica.ok) throw new Error('Erro ao recuperar chave simétrica.');
+
+            const chavesSimetricasRecuperadas = await chaveSimetrica.json();
+
+
+            if (!Array.isArray(chavesSimetricasRecuperadas) || chavesSimetricasRecuperadas.length === 0) {
+                throw new Error('Nenhuma chave simétrica encontrada.');
+            }
+
+
+            const ultimaChave = chavesSimetricasRecuperadas[chavesSimetricasRecuperadas.length - 1];
+
+
+            setSymmetricOriginalKey(ultimaChave?.chaveBase64);
+
+            console.log('Última Chave Simétrica Recuperada:', ultimaChave);
 
 
             setStepState({
@@ -71,7 +95,7 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
 
     // Formatar a chave simétrica em várias linhas
     const formatKey = (key) => {
-        const chunkSize = 64; // Tamanho da linha (em caracteres)
+        const chunkSize = 64;
         const chunks = key.match(new RegExp('.{1,' + chunkSize + '}', 'g')); // Quebra a chave em pedaços
         return chunks ? chunks.join('\n') : key; // Junta as linhas quebradas
     };
@@ -162,27 +186,56 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
                     <AnimatePresence>
                         {Array.isArray(encryptionSteps) && encryptionSteps.length > 0 && (
                             <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
+                                initial={{opacity: 0}}
+                                animate={{opacity: 1}}
+                                exit={{opacity: 0}}
                                 className="w-full mt-6 space-y-4"
                             >
                                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                     {encryptionSteps.map((step, index) => (
                                         <div key={index} className="flex items-center space-x-3">
-                                            <CheckCircle className="text-green-500 w-5 h-5" />
+                                            <CheckCircle className="text-green-500 w-5 h-5"/>
                                             <p className="text-gray-700">{step}</p>
                                         </div>
                                     ))}
                                 </div>
 
+
                                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                     <p className="font-semibold text-gray-900">
-                                        Chave Simétrica Protegida:
+                                        Chave Simétrica Original:
+                                    </p>
+                                    {symmetricOriginalKey ? (
+                                        <div>
+                                            <code
+                                                className="text-sm text-blue-600 break-words block whitespace-pre-line">
+                                                {formatKey(symmetricOriginalKey)}
+                                            </code>
+                                            <div className="mt-2 text-sm text-gray-600">
+                                                <p>
+                                                    <strong>Tamanho:</strong> {getKeySizeInBytes(symmetricOriginalKey)} bytes
+                                                </p>
+                                                <p>
+                                                    <strong>Algoritmo:</strong> AES
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">
+                                            Aguardando retorno do backend...
+                                        </p>
+                                    )}
+                                </div>
+
+
+                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                    <p className="font-semibold text-gray-900">
+                                        Chave Simétrica Cifrada:
                                     </p>
                                     {symmetricKey ? (
                                         <div>
-                                            <code className="text-sm text-blue-600 break-words block whitespace-pre-line">
+                                            <code
+                                                className="text-sm text-blue-600 break-words block whitespace-pre-line">
                                                 {formatKey(symmetricKey)}
                                             </code>
                                             <div className="mt-2 text-sm text-gray-600">
@@ -203,7 +256,6 @@ export function Protecao({stepState, setStepState, setIsStepComplete}) {
                             </motion.div>
                         )}
                     </AnimatePresence>
-
 
 
                     {/* Informações sobre o processo */}

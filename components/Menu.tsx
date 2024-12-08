@@ -1,4 +1,3 @@
-
 import {RefreshCw} from "lucide-react";
 import {motion} from "framer-motion";
 import {Button} from "@/components/utils/components/button";
@@ -20,10 +19,8 @@ export function Menu({title, icon, status, onReset}: ProcessStepProps) {
     return (
         <li className={`flex flex-col items-center pb-3 justify-center font-bold px-2 ${statusStyles[status]}`}>
         <span className="flex items-center space-x-2 text-center break-words w-full">
-            {/* Ícone e título alinhados horizontalmente */}
             <div className="w-6 h-6">{icon}</div>
-            {/* Ícone */}
-            <span>{title}</span> {/* Título */}
+            <span>{title}</span>
         </span>
 
             {status === 'completed' && onReset && (

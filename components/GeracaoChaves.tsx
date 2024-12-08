@@ -17,7 +17,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
     } = stepState;
 
     async function handleGenerateKeysBackend() {
-        // Definindo o estado de carregamento
+
         setStepState({showRSALoading: true, showAESLoading: true});
 
         try {
@@ -67,7 +67,6 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
             alert("Chaves Geradas com sucesso!")
 
         } catch (error) {
-            // Tratando erros durante as requisições
             console.error('Erro ao gerar as chaves:', error);
             alert('Erro ao gerar as chaves')
             setStepState({
@@ -262,7 +261,7 @@ export function GeracaoChaves({stepState, setStepState, setIsStepComplete}) {
                 {rsaGenerated && aesGenerated && (
                     <Button
                         onClick={handleReset}
-                        className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 font-medium shadow-md transition-all duration-200 bg-white border-b-gray-600"
+                        className="flex items-center gap-3 px-6 py-3 rounded-md text-gray-700 font-medium shadow-md transition-all duration-200 bg-white border-b-gray-100"
                     >
                         <FaInfoCircle className="text-xl"/>
                         Resetar

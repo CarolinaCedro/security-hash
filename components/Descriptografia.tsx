@@ -1,21 +1,36 @@
-import { motion } from "framer-motion";
-import { KeyIcon, LockClosedIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
-import { InformationCircleIcon } from "@heroicons/react/16/solid";
-import axios from "axios";  // Para facilitar a requisição HTTP
+import {motion} from "framer-motion";
+import {KeyIcon, LockClosedIcon, ShieldCheckIcon} from "@heroicons/react/24/outline";
+import {useState} from "react";
+import {InformationCircleIcon} from "@heroicons/react/16/solid";
+import axios from "axios";
+import {blob} from "node:stream/consumers"; // Para facilitar a requisição HTTP
 
 export function Descriptografia() {
     const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
     const [currentStep, setCurrentStep] = useState(0); // Etapas: 0 = início, 1 = AES, 2 = Descriptografia, 3 = Verificação
     const [privateKey, setPrivateKey] = useState("");
     const [fileContent, setFileContent] = useState("");  // Estado para armazenar o conteúdo do arquivo descriptografado
+    const [blob, setBlob] = useState<Blob>(null); // Estado para armazenar o arquivo em Blob
+
 
     const handleProcess = async () => {
         setStatus("processing");
         const steps = [
-            { title: "Recuperação da chave AES", description: "Usando a chave privada RSA do professor", icon: <KeyIcon className="w-8 h-8 text-yellow-500" /> },
-            { title: "Descriptografia de arquivo", description: "Usando a chave AES recuperada", icon: <LockClosedIcon className="w-8 h-8 text-brown-500" /> },
-            { title: "Verificação da assinatura", description: "Usando a chave pública do aluno", icon: <ShieldCheckIcon className="w-8 h-8 text-purple-500" /> },
+            {
+                title: "Recuperação da chave AES",
+                description: "Usando a chave privada RSA do professor",
+                icon: <KeyIcon className="w-8 h-8 text-yellow-500"/>
+            },
+            {
+                title: "Descriptografia de arquivo",
+                description: "Usando a chave AES recuperada",
+                icon: <LockClosedIcon className="w-8 h-8 text-brown-500"/>
+            },
+            {
+                title: "Verificação da assinatura",
+                description: "Usando a chave pública do aluno",
+                icon: <ShieldCheckIcon className="w-8 h-8 text-purple-500"/>
+            },
         ];
 
         for (let i = 0; i < steps.length; i++) {
@@ -33,11 +48,48 @@ export function Descriptografia() {
             setFileContent(response.data);  // Supondo que a resposta seja o conteúdo do arquivo em texto
 
             setStatus("success");
+
+            const arquivoBase64 = response.data;  // Resposta do servidor
+
+            const byteCharacters = atob(arquivoBase64);
+            const byteArrays = [];
+
+            for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
+                const slice = byteCharacters.slice(offset, offset + 1024);
+                const byteNumbers = new Array(slice.length);
+
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+
+            const fileBlob = new Blob(byteArrays, { type: 'application/octet-stream' });
+            setBlob(fileBlob);
+
+
+
         } catch (error) {
             console.error("Erro ao descriptografar:", error);
             setStatus("idle");
         }
     };
+
+    const downloadFile = () => {
+        if (!blob) {
+            console.error("Arquivo não disponível para download");
+            return;
+        }
+
+        // Criar link de download e disparar a ação
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'arquivo-original-recuperado.txt';  // Altere a extensão conforme necessário
+        link.click();
+    };
+
 
     const handleReset = () => {
         setStatus("idle");
@@ -47,9 +99,21 @@ export function Descriptografia() {
     };
 
     const steps = [
-        { title: "Recuperação da chave AES", description: "Usando a chave privada RSA do professor", icon: <KeyIcon className="w-8 h-8 text-yellow-500" /> },
-        { title: "Descriptografia de arquivo", description: "Usando a chave AES recuperada", icon: <LockClosedIcon className="w-8 h-8 text-brown-500" /> },
-        { title: "Verificação da assinatura", description: "Usando a chave pública do aluno", icon: <ShieldCheckIcon className="w-8 h-8 text-purple-500" /> },
+        {
+            title: "Recuperação da chave AES",
+            description: "Usando a chave privada RSA do professor",
+            icon: <KeyIcon className="w-8 h-8 text-yellow-500"/>
+        },
+        {
+            title: "Descriptografia de arquivo",
+            description: "Usando a chave AES recuperada",
+            icon: <LockClosedIcon className="w-8 h-8 text-brown-500"/>
+        },
+        {
+            title: "Verificação da assinatura",
+            description: "Usando a chave pública do aluno",
+            icon: <ShieldCheckIcon className="w-8 h-8 text-purple-500"/>
+        },
     ];
 
     return (
@@ -155,6 +219,13 @@ export function Descriptografia() {
                         <div className="w-full overflow-x-auto bg-gray-100 p-4 rounded-md max-h-96">
                             <pre className="text-sm text-gray-800 whitespace-pre-wrap break-words">{fileContent}</pre>
                         </div>
+
+                        {status === "success" && blob && (
+                            <button onClick={downloadFile}>
+                                Baixar Arquivo
+                            </button>
+                        )}
+
                     </div>
 
                 )}
@@ -170,7 +241,7 @@ export function Descriptografia() {
                 </button>
                 <button
                     onClick={handleReset}
-                    className="w-full py-3 bg-red-500 text-white rounded-md shadow-lg hover:bg-red-400"
+                    className="w-full py-3 bg-gray-600 text-white rounded-md shadow-lg hover:gray-400"
                 >
                     Resetar
                 </button>

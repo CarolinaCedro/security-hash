@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { calculateHash } from "@/components/utils";
-import { Label } from "@/components/utils/components/label";
-import { TooltipProvider } from "@/components/utils/components/tooltip";
+import {useEffect, useRef, useState} from "react";
+import {calculateHash} from "@/components/utils";
+import {Label} from "@/components/utils/components/label";
+import {TooltipProvider} from "@/components/utils/components/tooltip";
+import {LockClosedIcon} from "@heroicons/react/24/outline";
+import {InformationCircleIcon} from "@heroicons/react/16/solid";
 
-export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
-    const { publicKey, file, fileHash } = stepState;
+export function Preparacao({stepState, setStepState, setIsStepComplete}) {
+    const {publicKey, file, fileHash, fileContent} = stepState;
     const [fileInfo, setFileInfo] = useState(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,7 +34,7 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
         const selectedFile = event.target.files?.[0];
         if (!selectedFile) return;
 
-        setStepState({ file: selectedFile, fileContent: null });
+        setStepState({file: selectedFile, fileContent: null});
 
         const reader = new FileReader();
         reader.onload = async () => {
@@ -43,7 +45,7 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
             );
             const hash = await calculateHash(content);
 
-            setStepState({ fileContent: base64Content, fileHash: hash });
+            setStepState({fileContent: content, fileHash: hash});
             setFileInfo({
                 name: selectedFile.name,
                 size: (selectedFile.size / 1024).toFixed(2),
@@ -83,17 +85,12 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
 
             const result = await response.json();
             console.log("Arquivo salvo com sucesso:", result);
-
-            // Alerta de sucesso
             alert("Arquivo enviado com sucesso!");
         } catch (error) {
             console.error("Erro ao salvar o arquivo:", error);
-
-            // Alerta de erro
             alert("Erro ao salvar o arquivo. Tente novamente.");
         }
     };
-
 
     const triggerFileInput = () => {
         fileInputRef.current?.click();
@@ -122,11 +119,7 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
                 </div>
                 <div className="border-b pb-4 bg-blue-50 p-4 rounded-lg shadow-md flex items-start mb-4">
                     <div className="text-blue-600 mr-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"/>
-                        </svg>
+                        <InformationCircleIcon className="w-10 h-16 text-blue-500 animate-bounce"/>
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-blue-800">
@@ -142,11 +135,8 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
 
                 <div className="border-b pb-4 bg-green-50 p-4 rounded-lg shadow-md flex items-start">
                     <div className="text-green-600 mr-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                  d="M12 9v6m0 0l3-3m-3 3l-3-3m6 3a9 9 0 1 1-9-9 9 9 0 0 1 9 9z"/>
-                        </svg>
+                        <LockClosedIcon className="w-10 h-16 text-green-500 animate-bounce"/>
+
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-green-800">
@@ -180,9 +170,20 @@ export function Preparacao({ stepState, setStepState, setIsStepComplete }) {
                             <p className="text-sm text-gray-500">Nome: {fileInfo.name}</p>
                             <p className="text-sm text-gray-500">Tamanho: {fileInfo.size} KB</p>
                             {fileHash && <p className="text-sm text-gray-500">Hash SHA-256: {fileHash}</p>}
+                            {fileContent && (
+                                <div className="mt-4">
+                                    <h4 className="text-md font-semibold text-gray-700">Conteúdo do Arquivo:</h4>
+                                    <pre
+                                        className="bg-gray-100 p-4 rounded-lg text-sm text-gray-600 overflow-x-auto">
+                                        {fileContent}
+                                    </pre>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
+
+
             </div>
         </TooltipProvider>
     );
